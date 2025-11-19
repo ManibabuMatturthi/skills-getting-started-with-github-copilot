@@ -38,6 +38,30 @@ activities = {
         "schedule": "Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM",
         "max_participants": 30,
         "participants": ["john@mergington.edu", "olivia@mergington.edu"]
+    },
+    "table-tennis": {
+        "description": "Fast-paced indoor sport, play singles or doubles.",
+        "participants": []
+    },
+    "badminton": {
+        "description": "Energetic racket sport; great for fitness and reflexes.",
+        "participants": []
+    },
+    "pottery": {
+        "description": "Hands-on ceramics workshop to learn wheel and handbuilding.",
+        "participants": []
+    },
+    "photography": {
+        "description": "Guided photo walks and editing sessions to improve composition.",
+        "participants": []
+    },
+    "chess-club": {
+        "description": "Weekly chess meetups for players of all levels.",
+        "participants": []
+    },
+    "debate-club": {
+        "description": "Practice public speaking, argumentation, and structured debates.",
+        "participants": []
     }
 }
 
