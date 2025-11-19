@@ -19,9 +19,12 @@ document.addEventListener("DOMContentLoaded", () => {
     .activity-card h4 { margin: 0 0 6px 0; color: #111827; }
     .activity-card p { margin: 6px 0; color: #374151; font-size: 14px; }
     .participants-section { margin-top: 10px; }
-    .participants-list { margin: 6px 0 0 18px; padding: 0; color: #374151; }
-    .participants-list li { margin: 4px 0; list-style-type: disc; }
+    .participants-list { margin: 6px 0 0 0; padding: 0; color: #374151; list-style: none; }
+    .participants-list li { margin: 6px 0; display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; }
     .participants-list li.muted { color: #9ca3af; font-style: italic; }
+    .participant-email { overflow-wrap: anywhere; }
+    .remove-btn { margin-left: 8px; background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 4px; }
+    .remove-btn:hover { background: rgba(239,68,68,0.08); }
   `;
   document.head.appendChild(style);
 
@@ -38,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
-      const response = await fetch("/activities");
+      const response = await fetch("/activities", { cache: "no-store" });
       const activities = await response.json();
 
       // Clear loading message / previous list
@@ -54,16 +57,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        // Build participants HTML (bulleted list)
-        let participantsHtml = "";
-        if (details.participants && details.participants.length > 0) {
-          participantsHtml = `<ul class="participants-list">${details.participants
-            .map((p) => `<li>${escapeHtml(p)}</li>`)
-            .join("")}</ul>`;
-        } else {
-          participantsHtml = `<ul class="participants-list"><li class="muted">No participants yet — be the first!</li></ul>`;
-        }
-
         activityCard.innerHTML = `
           <h4>${escapeHtml(name)}</h4>
           <p>${escapeHtml(details.description)}</p>
@@ -71,9 +64,75 @@ document.addEventListener("DOMContentLoaded", () => {
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
           <div class="participants-section">
             <p><strong>Participants:</strong></p>
-            ${participantsHtml}
+            <div class="participants-container"></div>
           </div>
         `;
+
+        // Build participants list using DOM methods to keep data attributes raw
+        const container = activityCard.querySelector(".participants-container");
+        const ul = document.createElement("ul");
+        ul.className = "participants-list";
+
+        if (details.participants && details.participants.length > 0) {
+          details.participants.forEach((p) => {
+            const li = document.createElement("li");
+
+            const span = document.createElement("span");
+            span.className = "participant-email";
+            span.textContent = p;
+
+            const btn = document.createElement("button");
+            btn.className = "remove-btn";
+            btn.type = "button";
+            btn.setAttribute("aria-label", `Unregister ${p}`);
+            btn.textContent = "✖";
+            // store raw values in dataset for accurate requests
+            btn.dataset.activity = name;
+            btn.dataset.email = p;
+
+            btn.addEventListener("click", async () => {
+              if (!confirm(`Unregister ${p} from ${name}?`)) return;
+
+              try {
+                const res = await fetch(
+                  `/activities/${encodeURIComponent(name)}/participants?email=${encodeURIComponent(p)}`,
+                  { method: "DELETE" }
+                );
+
+                const body = await res.json();
+                if (res.ok) {
+                  messageDiv.textContent = body.message || "Unregistered";
+                  messageDiv.className = "success";
+                  messageDiv.classList.remove("hidden");
+                  // Refresh activities list
+                  await fetchActivities();
+                } else {
+                  messageDiv.textContent = body.detail || "Failed to unregister";
+                  messageDiv.className = "error";
+                  messageDiv.classList.remove("hidden");
+                }
+
+                setTimeout(() => messageDiv.classList.add("hidden"), 4000);
+              } catch (err) {
+                console.error("Error unregistering:", err);
+                messageDiv.textContent = "Failed to unregister. Try again.";
+                messageDiv.className = "error";
+                messageDiv.classList.remove("hidden");
+              }
+            });
+
+            li.appendChild(span);
+            li.appendChild(btn);
+            ul.appendChild(li);
+          });
+        } else {
+          const li = document.createElement("li");
+          li.className = "muted";
+          li.textContent = "No participants yet — be the first!";
+          ul.appendChild(li);
+        }
+
+        container.appendChild(ul);
 
         activitiesList.appendChild(activityCard);
 
@@ -112,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
         signupForm.reset();
 
         // Refresh activities so participants list updates immediately
-        fetchActivities();
+        await fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
